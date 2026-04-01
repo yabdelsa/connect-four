@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frontend Mentor | Connect Four</title>
+  <style>
+    @font-face {
+      font-family: 'Space Grotesk';
+      src: url('SpaceGrotesk-VariableFont_wght.ttf') format('truetype');
+      font-weight: 100 900;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #5C2DD5; --purple2: #7945FF;
+      --pink: #FD6687;   --yellow: #FFCE67;
+      --dark: #160B53;   --white: #FFFFFF; --black: #000000;
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--purple2);
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; overflow-x: hidden;
+    }
+    body::after {
+      content: ''; position: fixed; bottom: 0; left: 0; right: 0; height: 33%;
+      background: var(--dark); border-radius: 40px 40px 0 0; z-index: 0;
+    }
+    .screen { display: none; position: relative; z-index: 1; width: 100%; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+    /* MENU */
+    #screen-menu { padding: 48px 16px; gap: 40px; }
+    .menu-logo svg { display: block; }
+    .menu-card {
+      background: var(--purple); border: 3px solid var(--black);
+      border-radius: 40px; box-shadow: 0 10px 0 var(--black);
+      padding: 48px 40px; width: min(480px,100%);
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+    }
+    .menu-title {
+      font-size: clamp(40px,10vw,64px); font-weight: 700;
+      text-transform: uppercase; color: var(--white); text-align: center; line-height: 1.05;
+    }
+    .menu-btn {
+      width: 100%; border: 3px solid var(--black); border-radius: 20px;
+      padding: 18px 28px; font-family: inherit; font-size: 20px; font-weight: 700;
+      text-transform: uppercase; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 8px 0 var(--black); transition: transform .1s, box-shadow .1s;
+    }
+    .menu-btn:hover  { transform: translateY(-3px); box-shadow: 0 11px 0 var(--black); }
+    .menu-btn:active { transform: translateY(5px);  box-shadow: 0 3px 0 var(--black);  }
+    .menu-btn.pvp   { background: var(--pink);   color: var(--white); }
+    .menu-btn.cpu-btn { background: var(--yellow); color: var(--black); }
+    .menu-btn.rules { background: var(--white);   color: var(--black); }
+    .menu-btn-icon  { flex-shrink: 0; }
+
+    /* MODALS */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .rules-card {
+      background: var(--white); border: 3px solid var(--black);
+      border-radius: 40px; box-shadow: 0 10px 0 var(--black);
+      padding: 48px 40px 40px; width: min(480px,100%);
+    }
+    .rules-card h2 { font-size: 48px; font-weight: 700; text-transform: uppercase; margin-bottom: 28px; }
+    .rules-section { font-size: 14px; font-weight: 700; text-transform: uppercase; color: var(--purple); letter-spacing: 2px; margin-bottom: 10px; }
+    .rules-card p  { font-size: 15px; line-height: 1.65; margin-bottom: 28px; }
+    .rules-card ol { padding-left: 20px; font-size: 15px; line-height: 1.8; margin-bottom: 36px; }
+    .rules-close   { display: block; margin: 0 auto; background: none; border: none; cursor: pointer; padding: 0; }
+    .ingame-card {
+      background: var(--purple); border: 3px solid var(--black);
+      border-radius: 40px; box-shadow: 0 10px 0 var(--black);
+      padding: 48px 40px; width: min(480px,100%);
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .ingame-card h2 { font-size: 52px; font-weight: 700; text-transform: uppercase; color: var(--white); margin-bottom: 8px; }
+    .ingame-btn {
+      width: 100%; border: 3px solid var(--black); border-radius: 20px;
+      padding: 18px 28px; font-family: inherit; font-size: 20px; font-weight: 700;
+      text-transform: uppercase; cursor: pointer; text-align: center;
+      box-shadow: 0 8px 0 var(--black); transition: transform .1s, box-shadow .1s;
+    }
+    .ingame-btn:hover  { transform: translateY(-3px); box-shadow: 0 11px 0 var(--black); }
+    .ingame-btn:active { transform: translateY(5px);  box-shadow: 0 3px 0 var(--black);  }
+    .ingame-btn.ib-continue { background: var(--white);  color: var(--black); }
+    .ingame-btn.ib-restart  { background: var(--yellow); color: var(--black); }
+    .ingame-btn.ib-quit     { background: var(--dark);   color: var(--white); }
+
+    /* GAME */
+    #screen-game { padding: 16px 16px 0; }
+    .game-header {
+      display: flex; align-items: center; justify-content: space-between;
+      width: min(640px,100%); margin-bottom: 16px;
+    }
+    .header-btn {
+      background: var(--dark); color: var(--white);
+      border: 3px solid var(--black); border-radius: 40px;
+      padding: 13px 28px; font-family: inherit; font-size: 16px; font-weight: 700;
+      text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 5px 0 var(--black); transition: transform .1s, box-shadow .1s;
+    }
+    .header-btn:hover  { transform: translateY(-2px); box-shadow: 0 7px 0 var(--black); }
+    .header-btn:active { transform: translateY(3px);  box-shadow: 0 2px 0 var(--black); }
+    .game-layout {
+      display: grid; grid-template-columns: 140px auto 140px;
+      gap: 20px; align-items: center; width: min(740px,100%);
+    }
+    .score-card {
+      background: var(--white); border: 3px solid var(--black);
+      border-radius: 20px; box-shadow: 0 8px 0 var(--black);
+      padding: 52px 16px 20px; text-align: center; position: relative;
+    }
+    .score-avatar {
+      position: absolute; top: -28px;
+      width: 60px; height: 65px;
+    }
+    .score-card.p1 .score-avatar { left: 12px; }
+    .score-card.p2 .score-avatar { right: 12px; }
+    .score-label { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .score-value { font-size: 56px; font-weight: 700; line-height: 1; }
+
+    /* BOARD */
+    .board-area { position: relative; }
+    .markers-row {
+      display: grid; grid-template-columns: repeat(7,1fr); height: 40px; padding: 0 4px;
+    }
+    .marker-cell { display: flex; align-items: flex-end; justify-content: center; }
+    .marker-cell svg { opacity: 0; transition: opacity .15s; transform: rotate(180deg); }
+    .marker-cell svg.visible { opacity: 1; }
+    .board-container { position: relative; width: 100%; }
+    .board-ratio-box { position: relative; width: 100%; padding-top: calc(594/632*100%); }
+
+    /* counters behind board SVG */
+    /*
+      Board SVG white layer: viewBox 0 0 632 584, rendered with preserveAspectRatio="xMidYMin meet"
+      inside a container that has aspect ratio 594/632 (from the black shadow layer).
+      White board fills width=W, height=584/632*W, anchored at top.
+
+      Hole centres in SVG space:  x={52,140,228,316,404,492,580}  y={52,140,228,316,404,492}
+      Cell size = 88 SVG units.   Half-cell = 44.
+      Edge gap left/right/top = 8 SVG units = 8/632 of W.
+      Container height = 594/632*W.  Grid bottom edge = 536 SVG units = 536/632*W.
+      Bottom padding = (594-536)/632*W = 58/632*W = 9.177% of W.
+
+      All CSS padding % values reference parent WIDTH (W), not height.
+    */
+    .counters-layer {
+      position: absolute; inset: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      /* top=8/632  right=8/632  bottom=58/632  left=8/632 */
+      padding: 1.266% 1.266% 9.177% 1.266%;
+    }
+    .counter-cell { display: flex; align-items: center; justify-content: center; }
+    .counter {
+      /* Hole diameter = 64/88 = 72.7% of cell — use 73% so it fully covers each hole.
+         No CSS border: the board SVG's stroke provides the dark ring. */
+      width: 73%; aspect-ratio: 1; border-radius: 50%;
+    }
+    .counter.red    { background: var(--pink);   box-shadow: inset 0 -5px 0 rgba(0,0,0,.4); }
+    .counter.yellow { background: var(--yellow);  box-shadow: inset 0 -5px 0 rgba(0,0,0,.30); }
+    .counter.win    {
+      outline: 4px solid rgba(255,255,255,.85); outline-offset: -8px;
+    }
+    @keyframes dropIn {
+      from { transform: translateY(var(--dy)); }
+      to   { transform: translateY(0); }
+    }
+    .counter.dropping { animation: dropIn var(--dur,.35s) cubic-bezier(.55,0,.75,.6) forwards; }
+
+    .board-svg-layer {
+      position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+    .board-svg-layer.black { z-index: 2; }
+    .board-svg-layer.white { z-index: 3; }
+
+    .board-click-overlay {
+      position: absolute; inset: 0; z-index: 4;
+      display: grid; grid-template-columns: repeat(7,1fr); cursor: pointer;
+    }
+    .board-col-hit { height: 100%; }
+
+    /* TURN / WIN banner */
+    .turn-banner-wrap {
+      display: flex; justify-content: center; margin-top: -4px; position: relative; z-index: 5;
+    }
+    .turn-banner {
+      background: var(--pink); border: 3px solid var(--black);
+      border-radius: 20px; box-shadow: 0 10px 0 var(--black);
+      padding: 16px 36px 32px; text-align: center; min-width: 200px;
+      clip-path: polygon(0% 0%,100% 0%,100% 74%,57% 74%,50% 100%,43% 74%,0% 74%);
+    }
+    .turn-banner.yellow { background: var(--yellow); }
+    .turn-label {
+      font-size: 14px; font-weight: 700; text-transform: uppercase;
+      color: var(--white); letter-spacing: 1px; margin-bottom: 4px;
+    }
+    .turn-banner.yellow .turn-label { color: var(--black); }
+    .turn-timer { font-size: 56px; font-weight: 700; line-height: 1; color: var(--white); }
+    .turn-banner.yellow .turn-timer { color: var(--black); }
+    .win-banner {
+      display: none; background: var(--white); border: 3px solid var(--black);
+      border-radius: 20px; box-shadow: 0 10px 0 var(--black);
+      padding: 20px 48px 28px; text-align: center; min-width: 220px;
+    }
+    .win-banner.show { display: block; }
+    .win-player-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+    .win-title { font-size: 56px; font-weight: 700; line-height: 1; color: var(--black); margin-bottom: 16px; }
+    .play-again-btn {
+      background: var(--dark); color: var(--white); border: 3px solid var(--black);
+      border-radius: 40px; padding: 14px 32px; font-family: inherit;
+      font-size: 15px; font-weight: 700; text-transform: uppercase; cursor: pointer;
+      box-shadow: 0 5px 0 var(--black); transition: transform .1s, box-shadow .1s;
+    }
+    .play-again-btn:hover  { transform: translateY(-2px); box-shadow: 0 7px 0 var(--black); }
+    .play-again-btn:active { transform: translateY(3px);  box-shadow: 0 2px 0 var(--black); }
+
+    @media (max-width: 660px) {
+      .game-layout { grid-template-columns: 1fr; grid-template-rows: auto auto auto; gap: 12px; }
+      .score-card { display: flex; flex-direction: row; align-items: center; justify-content: space-between; padding: 12px 20px; }
+      .score-avatar { display: none; }
+      .score-value { font-size: 36px; }
+      .board-area { order: 2; }
+      #score-p1   { order: 1; }
+      #score-p2   { order: 3; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- MAIN MENU -->
+<div id="screen-menu" class="screen active">
+  <div class="menu-logo" id="menu-logo"></div>
+  <div class="menu-card">
+    <h1 class="menu-title">Connect<br>Four</h1>
+    <button class="menu-btn pvp" id="btn-pvp">
+      Player vs Player
+      <span class="menu-btn-icon" id="icon-pvp"></span>
+    </button>
+    <button class="menu-btn cpu-btn" id="btn-cpu">
+      Player vs CPU
+      <span class="menu-btn-icon" id="icon-pvc"></span>
+    </button>
+    <button class="menu-btn rules" id="btn-rules">Game Rules</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <button class="header-btn" id="btn-menu-ingame">Menu</button>
+    <div id="header-logo"></div>
+    <button class="header-btn" id="btn-restart">Restart</button>
+  </div>
+  <div class="game-layout">
+    <div class="score-card p1" id="score-p1">
+      <div class="score-avatar" id="avatar-p1"></div>
+      <div class="score-label" id="label-p1">Player 1</div>
+      <div class="score-value" id="score-val-1">0</div>
+    </div>
+
+    <div class="board-area">
+      <div class="markers-row" id="markers-row">
+        <div class="marker-cell"><svg id="m0" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m1" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m2" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m3" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m4" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m5" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+        <div class="marker-cell"><svg id="m6" viewBox="0 0 38 36" width="30" height="28"></svg></div>
+      </div>
+
+      <div class="board-container">
+        <div class="board-ratio-box">
+          <div class="counters-layer" id="counters-layer"></div>
+
+          <!-- Board black shadow layer -->
+          <svg class="board-svg-layer black" viewBox="0 0 632 594" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter x="-.8%" y="-.9%" width="101.6%" height="103.4%" filterUnits="objectBoundingBox" id="bsf">
+                <feOffset dy="10" in="SourceAlpha" result="s1"/>
+                <feComposite in="s1" in2="SourceAlpha" operator="out" result="s1"/>
+                <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" in="s1"/>
+              </filter>
+              <path id="bp" d="M592 0c22.091 0 40 17.909 40 40v504c0 22.091-17.909 40-40 40H40c-22.091 0-40-17.909-40-40V40C0 17.909 17.909 0 40 0h552Zm-12 460c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-176 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-176 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32c0-17.496-14.042-31.713-31.47-31.996L140 460Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm528-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm0-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-440-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-528 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm528-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm528-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm528-88c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Zm-88 0c-17.673 0-32 14.327-32 32s14.327 32 32 32 32-14.327 32-32-14.327-32-32-32Z"/>
+            </defs>
+            <use fill="#000" filter="url(#bsf)" href="#bp"/>
+            <use fill="#000" href="#bp"/>
+          </svg>
+
+          <!-- Board white top layer (holes let counters show through).
+               preserveAspectRatio="xMidYMin meet" pins the board to the top of the
+               container so hole y-positions are exactly SVG_y × W/632 from the top. -->
+          <svg class="board-svg-layer white" viewBox="0 0 632 584" preserveAspectRatio="xMidYMin meet" xmlns="http://www.w3.org/2000/svg">
+            <path d="M592 1.5c10.631 0 20.256 4.31 27.224 11.276C626.19 19.744 630.5 29.37 630.5 40v504c0 10.631-4.31 20.256-11.276 27.224C612.256 578.19 602.63 582.5 592 582.5H40c-10.631 0-20.256-4.31-27.224-11.276C5.81 564.256 1.5 554.63 1.5 544V40c0-10.631 4.31-20.256 11.276-27.224C19.744 5.81 29.37 1.5 40 1.5h552Zm-12 457c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-176 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-175.994 0c-9.253-.002-17.63 3.748-23.694 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.15-3.669-17.444-9.616-23.49-5.958-6.058-14.203-9.86-23.337-10.006ZM52 458.5c-9.25 0-17.626 3.75-23.688 9.812C22.25 474.374 18.5 482.749 18.5 492c0 9.25 3.75 17.626 9.812 23.688C34.374 521.75 42.749 525.5 52 525.5c9.25 0 17.626-3.75 23.688-9.812C81.75 509.626 85.5 501.251 85.5 492c0-9.25-3.75-17.626-9.812-23.688C69.626 462.25 61.251 458.5 52 458.5Zm528-88c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C22.25 386.374 18.5 394.749 18.5 404c0 9.25 3.75 17.626 9.812 23.688C34.374 433.75 42.749 437.5 52 437.5c9.25 0 17.626-3.75 23.688-9.812C81.75 421.626 85.5 413.251 85.5 404c0-9.25-3.75-17.626-9.812-23.688C69.626 374.25 61.251 370.5 52 370.5Zm0-88c-9.25 0-17.626 3.75-23.688 9.812C22.25 298.374 18.5 306.749 18.5 316c0 9.25 3.75 17.626 9.812 23.688C34.374 345.75 42.749 349.5 52 349.5c9.25 0 17.626-3.75 23.688-9.812C81.75 333.626 85.5 325.251 85.5 316c0-9.25-3.75-17.626-9.812-23.688C69.626 286.25 61.251 282.5 52 282.5Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-440-88c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-528 0c-9.25 0-17.626 3.75-23.688 9.812C22.25 210.374 18.5 218.749 18.5 228c0 9.25 3.75 17.626 9.812 23.688C34.374 257.75 42.749 261.5 52 261.5c9.25 0 17.626-3.75 23.688-9.812C81.75 245.626 85.5 237.251 85.5 228c0-9.25-3.75-17.626-9.812-23.688C69.626 198.25 61.251 194.5 52 194.5Zm528-88c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812-6.062 6.062-9.812 14.437-9.812 23.688 0 9.25 3.75 17.626 9.812 23.688 6.062 6.062 14.437 9.812 23.688 9.812 9.25 0 17.626-3.75 23.688-9.812 6.062-6.062 9.812-14.437 9.812-23.688 0-9.25-3.75-17.626-9.812-23.688-6.062-6.062-14.437-9.812-23.688-9.812Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C22.25 122.374 18.5 130.749 18.5 140c0 9.25 3.75 17.626 9.812 23.688C34.374 169.75 42.749 173.5 52 173.5c9.25 0 17.626-3.75 23.688-9.812C81.75 157.626 85.5 149.251 85.5 140c0-9.25-3.75-17.626-9.812-23.688C69.626 110.25 61.251 106.5 52 106.5Zm528-88c-9.25 0-17.626 3.75-23.688 9.812C550.25 34.374 546.5 42.749 546.5 52c0 9.25 3.75 17.626 9.812 23.688C562.374 81.75 570.749 85.5 580 85.5c9.25 0 17.626-3.75 23.688-9.812C609.75 69.626 613.5 61.251 613.5 52c0-9.25-3.75-17.626-9.812-23.688C597.626 22.25 589.251 18.5 580 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C462.25 34.374 458.5 42.749 458.5 52c0 9.25 3.75 17.626 9.812 23.688C474.374 81.75 482.749 85.5 492 85.5c9.25 0 17.626-3.75 23.688-9.812C521.75 69.626 525.5 61.251 525.5 52c0-9.25-3.75-17.626-9.812-23.688C509.626 22.25 501.251 18.5 492 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C374.25 34.374 370.5 42.749 370.5 52c0 9.25 3.75 17.626 9.812 23.688C386.374 81.75 394.749 85.5 404 85.5c9.25 0 17.626-3.75 23.688-9.812C433.75 69.626 437.5 61.251 437.5 52c0-9.25-3.75-17.626-9.812-23.688C421.626 22.25 413.251 18.5 404 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C286.25 34.374 282.5 42.749 282.5 52c0 9.25 3.75 17.626 9.812 23.688C298.374 81.75 306.749 85.5 316 85.5c9.25 0 17.626-3.75 23.688-9.812C345.75 69.626 349.5 61.251 349.5 52c0-9.25-3.75-17.626-9.812-23.688C333.626 22.25 325.251 18.5 316 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C198.25 34.374 194.5 42.749 194.5 52c0 9.25 3.75 17.626 9.812 23.688C210.374 81.75 218.749 85.5 228 85.5c9.25 0 17.626-3.75 23.688-9.812C257.75 69.626 261.5 61.251 261.5 52c0-9.25-3.75-17.626-9.812-23.688C245.626 22.25 237.251 18.5 228 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C110.25 34.374 106.5 42.749 106.5 52c0 9.25 3.75 17.626 9.812 23.688C122.374 81.75 130.749 85.5 140 85.5c9.25 0 17.626-3.75 23.688-9.812C169.75 69.626 173.5 61.251 173.5 52c0-9.25-3.75-17.626-9.812-23.688C157.626 22.25 149.251 18.5 140 18.5Zm-88 0c-9.25 0-17.626 3.75-23.688 9.812C22.25 34.374 18.5 42.749 18.5 52c0 9.25 3.75 17.626 9.812 23.688C34.374 81.75 42.749 85.5 52 85.5c9.25 0 17.626-3.75 23.688-9.812C81.75 69.626 85.5 61.251 85.5 52c0-9.25-3.75-17.626-9.812-23.688C69.626 22.25 61.251 18.5 52 18.5Z" fill="#FFF" stroke="#000" stroke-width="3" fill-rule="evenodd"/>
+          </svg>
+
+          <!-- Column click zones -->
+          <div class="board-click-overlay" id="board-overlay">
+            <div class="board-col-hit" data-col="0"></div>
+            <div class="board-col-hit" data-col="1"></div>
+            <div class="board-col-hit" data-col="2"></div>
+            <div class="board-col-hit" data-col="3"></div>
+            <div class="board-col-hit" data-col="4"></div>
+            <div class="board-col-hit" data-col="5"></div>
+            <div class="board-col-hit" data-col="6"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="turn-banner-wrap">
+        <div class="turn-banner" id="turn-banner">
+          <div class="turn-label" id="turn-label">Player 1's Turn</div>
+          <div class="turn-timer" id="turn-timer">30s</div>
+        </div>
+        <div class="win-banner" id="win-banner">
+          <div class="win-player-name" id="win-player-name"></div>
+          <div class="win-title" id="win-title">Wins!</div>
+          <button class="play-again-btn" id="btn-play-again">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="score-card p2" id="score-p2">
+      <div class="score-avatar" id="avatar-p2"></div>
+      <div class="score-label" id="label-p2">Player 2</div>
+      <div class="score-value" id="score-val-2">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- RULES MODAL -->
+<div class="modal-overlay" id="modal-rules">
+  <div class="rules-card">
+    <h2>Rules</h2>
+    <p class="rules-section">Objective</p>
+    <p>Be the first player to connect 4 of the same colored discs in a row (either vertically, horizontally, or diagonally).</p>
+    <p class="rules-section">How to play</p>
+    <ol>
+      <li>Red goes first in the first game.</li>
+      <li>Players must alternate turns, and only one disc can be dropped in each turn.</li>
+      <li>The game ends when there is a 4-in-a-row or a stalemate.</li>
+      <li>The starter of the previous game goes second on the next game.</li>
+    </ol>
+    <button class="rules-close" id="btn-rules-close">
+      <!-- icon-check inline -->
+      <svg width="70" height="75" viewBox="0 0 70 75" xmlns="http://www.w3.org/2000/svg">
+        <circle fill="#000" cx="35" cy="35" r="35"/>
+        <circle fill="#000" cx="35" cy="40" r="35"/>
+        <circle fill="#FD6687" cx="35" cy="35" r="32"/>
+        <polyline stroke="#FFF" stroke-width="3" fill="none" points="20 34.58 30.26 44.85 50.11 25"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- PAUSE MODAL -->
+<div class="modal-overlay" id="modal-ingame">
+  <div class="ingame-card">
+    <h2>Paused</h2>
+    <button class="ingame-btn ib-continue" id="btn-continue">Continue Game</button>
+    <button class="ingame-btn ib-restart"  id="btn-restart-modal">Restart</button>
+    <button class="ingame-btn ib-quit"     id="btn-quit">Quit Game</button>
+  </div>
+</div>
+
+<script>
+// ─── SVG STRINGS ────────────────────────────────────────────────────────────
+const SVG = {
+  logo: `<svg width="58" height="61" viewBox="0 0 58 61" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#000"><circle cx="13" cy="13" r="13"/><circle cx="45" cy="13" r="13"/><circle cx="13" cy="45" r="13"/><circle cx="45" cy="45" r="13"/></g>
+    <g fill="#000" transform="translate(0,3)"><circle cx="13" cy="13" r="13"/><circle cx="45" cy="13" r="13"/><circle cx="13" cy="45" r="13"/><circle cx="45" cy="45" r="13"/></g>
+    <circle fill="#FD6687" cx="13" cy="13" r="10"/>
+    <circle fill="#FFCE67" cx="45" cy="13" r="10"/>
+    <circle fill="#FFCE67" cx="13" cy="45" r="10"/>
+    <circle fill="#FD6687" cx="45" cy="45" r="10"/>
+  </svg>`,
+
+  logoSm: `<svg width="40" height="42" viewBox="0 0 58 61" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#000"><circle cx="13" cy="13" r="13"/><circle cx="45" cy="13" r="13"/><circle cx="13" cy="45" r="13"/><circle cx="45" cy="45" r="13"/></g>
+    <g fill="#000" transform="translate(0,3)"><circle cx="13" cy="13" r="13"/><circle cx="45" cy="13" r="13"/><circle cx="13" cy="45" r="13"/><circle cx="45" cy="45" r="13"/></g>
+    <circle fill="#FD6687" cx="13" cy="13" r="10"/>
+    <circle fill="#FFCE67" cx="45" cy="13" r="10"/>
+    <circle fill="#FFCE67" cx="13" cy="45" r="10"/>
+    <circle fill="#FD6687" cx="45" cy="45" r="10"/>
+  </svg>`,
+
+  pvp: `<svg width="72" height="40" viewBox="0 0 82 46" xmlns="http://www.w3.org/2000/svg">
+    <circle fill="#000" cx="59" cy="23" r="23"/><circle fill="#FFCE67" cx="59" cy="23" r="20"/>
+    <g stroke="#000" stroke-width="3" fill="none" transform="translate(52,14)">
+      <path d="M5,22C10.52,22 15,17.5 15,12C15,6.5 10.52,2 5,2" transform="translate(10,12) rotate(90) translate(-10,-12)"/>
+      <line x1="8.5" y1="0" x2="8.5" y2="5"/><line x1="16.8" y1="0" x2="16.8" y2="5"/>
+    </g>
+    <circle fill="#000" cx="23" cy="23" r="23"/><circle fill="#FFCE67" cx="23" cy="23" r="20"/>
+    <g stroke="#000" stroke-width="3" fill="none" transform="translate(13,14)">
+      <path d="M5,22C10.52,22 15,17.5 15,12C15,6.5 10.52,2 5,2" transform="translate(10,12) rotate(90) translate(-10,-12)"/>
+      <line x1="8.5" y1="0" x2="8.5" y2="5"/><line x1="16.8" y1="0" x2="16.8" y2="5"/>
+    </g>
+  </svg>`,
+
+  pvc: `<svg width="72" height="40" viewBox="0 0 82 46" xmlns="http://www.w3.org/2000/svg">
+    <circle fill="#fff" cx="59" cy="23" r="23"/>
+    <g transform="translate(39,3)"><circle fill="#FD6687" cx="20" cy="20" r="20"/>
+      <g stroke="#fff" stroke-width="3" fill="none" transform="translate(10,12)">
+        <line x1="12" y1="0.4" x2="17" y2="0.4"/><line x1="2.9" y1="0.4" x2="7.9" y2="0.4"/><line x1="0" y1="6.25" x2="20" y2="6.25"/>
+      </g>
+    </g>
+    <circle fill="#fff" cx="23" cy="23" r="23"/>
+    <g transform="translate(3,3)"><circle fill="#FD6687" cx="20" cy="20" r="20"/>
+      <g stroke="#fff" stroke-width="3" fill="none" transform="translate(10,11)">
+        <path d="M5,22C10.52,22 15,17.5 15,12C15,6.5 10.52,2 5,2" transform="translate(10,12) rotate(90) translate(-10,-12)"/>
+        <line x1="5.6" y1="0" x2="5.6" y2="5"/><line x1="14.4" y1="0" x2="14.4" y2="5"/>
+      </g>
+    </g>
+  </svg>`,
+
+  playerOne: `<svg width="54" height="59" viewBox="0 0 54 59" xmlns="http://www.w3.org/2000/svg">
+    <circle fill="#000" cx="27" cy="27" r="27"/><circle fill="#000" cx="27" cy="32" r="27"/>
+    <circle fill="#FD6687" cx="27" cy="27" r="24"/>
+    <g stroke="#000" stroke-width="3" fill="none" transform="translate(19,17)">
+      <path d="M6,27C12.6,27 18,21.4 18,14.75C18,8.1 12.6,2.75 6,2.75" transform="translate(12,14.75) rotate(90) translate(-12,-14.75)"/>
+      <line x1="10.25" y1="0" x2="10.25" y2="6"/><line x1="20.25" y1="0" x2="20.25" y2="6"/>
+    </g>
+  </svg>`,
+
+  playerTwo: `<svg width="54" height="59" viewBox="0 0 54 59" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(27,29.5) scale(-1,1) translate(-27,-29.5)">
+      <circle fill="#000" cx="27" cy="27" r="27"/><circle fill="#000" cx="27" cy="32" r="27"/>
+      <circle fill="#FFCE67" cx="27" cy="27" r="24"/>
+      <g stroke="#000" stroke-width="3" fill="none" transform="translate(19,17)">
+        <path d="M6,27C12.6,27 18,21.4 18,14.75C18,8.1 12.6,2.75 6,2.75" transform="translate(12,14.75) rotate(90) translate(-12,-14.75)"/>
+        <line x1="10.25" y1="0" x2="10.25" y2="6"/><line x1="20.25" y1="0" x2="20.25" y2="6"/>
+      </g>
+    </g>
+  </svg>`,
+
+  cpu: `<svg width="54" height="59" viewBox="0 0 54 59" xmlns="http://www.w3.org/2000/svg">
+    <circle fill="#000" cx="27" cy="27" r="27"/><circle fill="#000" cx="27" cy="32" r="27"/>
+    <circle fill="#FFCE67" cx="27" cy="27" r="24"/>
+    <g stroke="#000" stroke-width="3" fill="none" transform="translate(15,18)">
+      <line x1="14.5" y1="0.5" x2="20.5" y2="0.5"/><line x1="3.5" y1="0.5" x2="9.5" y2="0.5"/>
+      <line x1="0" y1="7.5" x2="24" y2="7.5"/>
+    </g>
+  </svg>`,
+
+  markerRed: `<defs><filter id="mrf"><feMorphology radius="3" operator="dilate" in="SourceAlpha" result="s1"/><feOffset dy="5" in="s1" result="s2"/><feComposite in="s2" in2="SourceAlpha" operator="out" result="s2"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" in="s2"/></filter></defs>
+    <g transform="matrix(1 0 0 -1 -877 156)" fill="none">
+      <path fill="#000" filter="url(#mrf)" d="m882.01 132.377 10.932-8.157a5 5 0 0 1 5.96-.015l11.068 8.172A5 5 0 0 1 912 136.4v6.6a5 5 0 0 1-5 5h-22a5 5 0 0 1-5-5v-6.616a5 5 0 0 1 2.01-4.007Z"/>
+      <path stroke="#000" stroke-width="3" fill="#FD6687" d="M895.916 121.727a6.49 6.49 0 0 1 3.877 1.271l11.068 8.173a6.5 6.5 0 0 1 2.639 5.229v6.6a6.48 6.48 0 0 1-1.904 4.596A6.48 6.48 0 0 1 907 149.5h-22a6.48 6.48 0 0 1-4.596-1.904A6.48 6.48 0 0 1 878.5 143v-6.616a6.5 6.5 0 0 1 2.613-5.21l10.932-8.157a6.49 6.49 0 0 1 3.87-1.29Z"/>
+    </g>`,
+
+  markerYellow: `<defs><filter id="myf"><feMorphology radius="3" operator="dilate" in="SourceAlpha" result="s1"/><feOffset dy="5" in="s1" result="s2"/><feComposite in="s2" in2="SourceAlpha" operator="out" result="s2"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" in="s2"/></filter></defs>
+    <g transform="matrix(1 0 0 -1 -789 156)" fill="none">
+      <path fill="#000" filter="url(#myf)" d="m794.01 132.377 10.932-8.157a5 5 0 0 1 5.96-.015l11.068 8.172A5 5 0 0 1 824 136.4v6.6a5 5 0 0 1-5 5h-22a5 5 0 0 1-5-5v-6.616a5 5 0 0 1 2.01-4.007Z"/>
+      <path stroke="#000" stroke-width="3" fill="#FFCE67" d="M807.916 121.727a6.49 6.49 0 0 1 3.877 1.271l11.068 8.173a6.5 6.5 0 0 1 2.639 5.229v6.6a6.48 6.48 0 0 1-1.904 4.596A6.48 6.48 0 0 1 819 149.5h-22a6.48 6.48 0 0 1-4.596-1.904A6.48 6.48 0 0 1 790.5 143v-6.616a6.5 6.5 0 0 1 2.613-5.21l10.932-8.157a6.49 6.49 0 0 1 3.87-1.29Z"/>
+    </g>`
+};
+
+// inject on load
+document.getElementById('menu-logo').innerHTML = SVG.logo;
+document.getElementById('header-logo').innerHTML = SVG.logoSm;
+document.getElementById('icon-pvp').innerHTML = SVG.pvp;
+document.getElementById('icon-pvc').innerHTML = SVG.pvc;
+document.getElementById('avatar-p1').innerHTML = SVG.playerOne;
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const ROWS=6, COLS=7, TIMER_MAX=30;
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let board=[], scores=[0,0], currentPlayer=1, firstPlayer=1;
+let gameOver=false, isCPU=false, cpuThinking=false;
+let timerVal=TIMER_MAX, timerInterval=null, hoveredCol=-1;
+
+// ─── DOM ─────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const screenMenu=$('screen-menu'), screenGame=$('screen-game');
+const countersLayer=$('counters-layer'), boardOverlay=$('board-overlay');
+const turnBanner=$('turn-banner'), turnLabel=$('turn-label'), turnTimer=$('turn-timer');
+const winBanner=$('win-banner'), winPlayerName=$('win-player-name'), winTitle=$('win-title');
+const scoreVal1=$('score-val-1'), scoreVal2=$('score-val-2');
+const labelP1=$('label-p1'), labelP2=$('label-p2');
+const avatarP2=$('avatar-p2');
+const modalRules=$('modal-rules'), modalIngame=$('modal-ingame');
+const markerSVGs=Array.from({length:7},(_,i)=>$('m'+i));
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+$('btn-rules').onclick       = ()=>modalRules.classList.add('open');
+$('btn-rules-close').onclick = ()=>modalRules.classList.remove('open');
+$('btn-pvp').onclick         = ()=>startGame(false);
+$('btn-cpu').onclick         = ()=>startGame(true);
+$('btn-menu-ingame').onclick = ()=>{ stopTimer(); modalIngame.classList.add('open'); };
+$('btn-continue').onclick    = ()=>{ modalIngame.classList.remove('open'); if(!gameOver)startTimer(); };
+$('btn-restart').onclick     = fullRestart;
+$('btn-restart-modal').onclick=()=>{ modalIngame.classList.remove('open'); fullRestart(); };
+$('btn-quit').onclick        = ()=>{ modalIngame.classList.remove('open'); goToMenu(); };
+$('btn-play-again').onclick  = playAgain;
+[modalRules,modalIngame].forEach(m=>m.addEventListener('click',e=>{ if(e.target===m)m.classList.remove('open'); }));
+
+// ─── SETUP ───────────────────────────────────────────────────────────────────
+function startGame(cpu) {
+  isCPU=cpu; firstPlayer=currentPlayer=1; scores=[0,0];
+  labelP1.textContent='Player 1';
+  labelP2.textContent=cpu?'CPU':'Player 2';
+  avatarP2.innerHTML=cpu?SVG.cpu:SVG.playerTwo;
+  screenMenu.classList.remove('active');
+  screenGame.classList.add('active');
+  resetBoard();
+}
+function goToMenu(){ stopTimer(); screenGame.classList.remove('active'); screenMenu.classList.add('active'); }
+function fullRestart(){ scores=[0,0]; firstPlayer=currentPlayer=1; updateScores(); resetBoard(); }
+function playAgain(){ firstPlayer=firstPlayer===1?2:1; currentPlayer=firstPlayer; resetBoard(); }
+
+function resetBoard(){
+  stopTimer();
+  board=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  gameOver=cpuThinking=false;
+  boardOverlay.style.pointerEvents='';
+  buildGrid(); updateScores(); clearMarkers();
+  winBanner.classList.remove('show');
+  turnBanner.style.display='';
+  updateTurnUI(); startTimer();
+  if(isCPU&&currentPlayer===2) scheduleCPU();
+}
+
+// ─── GRID ────────────────────────────────────────────────────────────────────
+function buildGrid(){
+  countersLayer.innerHTML='';
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    const cell=document.createElement('div');
+    cell.className='counter-cell';
+    cell.dataset.row=r; cell.dataset.col=c;
+    countersLayer.appendChild(cell);
+  }
+}
+function getCell(r,c){ return countersLayer.querySelector(`[data-row="${r}"][data-col="${c}"]`); }
+
+function placeDisc(row,col,player,animate){
+  const cell=getCell(row,col);
+  const disc=document.createElement('div');
+  disc.className='counter '+(player===1?'red':'yellow');
+  if(animate){
+    // Board top padding = 1.266% of board width; each cell = (100%-2*1.266%)/6 of height
+    const boardH=countersLayer.offsetHeight||400;
+    const padTop=boardH*0.01266;            // top padding in px (1.266% of W, but W≈boardH*(632/594))
+    const cellH=(boardH - padTop - boardH*0.09177)/6;
+    // distance from above container to this row's cell centre
+    const targetY=padTop + cellH*(row+0.5);
+    const dy=-(targetY+60);                 // start 60px above the container top
+    const dur=Math.min(.52,Math.max(.22,(row+2)*.075));
+    disc.style.setProperty('--dy',dy+'px');
+    disc.style.setProperty('--dur',dur+'s');
+    disc.classList.add('dropping');
+    disc.addEventListener('animationend',()=>disc.classList.remove('dropping'),{once:true});
+  }
+  cell.appendChild(disc);
+}
+
+// ─── MARKERS ─────────────────────────────────────────────────────────────────
+boardOverlay.addEventListener('mousemove',e=>{
+  if(gameOver||(isCPU&&currentPlayer===2))return;
+  const hit=e.target.closest('.board-col-hit');
+  if(!hit){clearMarkers();return;}
+  const col=+hit.dataset.col;
+  if(col!==hoveredCol){hoveredCol=col;showMarker(col);}
+});
+boardOverlay.addEventListener('mouseleave',()=>{ hoveredCol=-1; clearMarkers(); });
+
+function showMarker(col){
+  const inner=currentPlayer===1?SVG.markerRed:SVG.markerYellow;
+  markerSVGs.forEach((svg,i)=>{
+    svg.innerHTML=inner;
+    svg.classList.toggle('visible',i===col);
+  });
+}
+function clearMarkers(){ markerSVGs.forEach(svg=>svg.classList.remove('visible')); }
+
+// ─── CLICKS ──────────────────────────────────────────────────────────────────
+boardOverlay.addEventListener('click',e=>{
+  if(gameOver||cpuThinking)return;
+  const hit=e.target.closest('.board-col-hit');
+  if(!hit)return;
+  const col=+hit.dataset.col;
+  const row=lowestEmpty(col);
+  if(row===-1)return;
+  drop(row,col,currentPlayer,true);
+});
+
+// ─── CORE ────────────────────────────────────────────────────────────────────
+function lowestEmpty(col){ for(let r=ROWS-1;r>=0;r--) if(!board[r][col])return r; return -1; }
+
+function drop(row,col,player,animate){
+  board[row][col]=player;
+  placeDisc(row,col,player,animate);
+  clearMarkers();
+  const delay=animate?320:0;
+  const win=checkWin(row,col);
+  if(win){setTimeout(()=>handleWin(win,player),delay);return;}
+  if(isDraw()){setTimeout(handleDraw,delay);return;}
+  currentPlayer=currentPlayer===1?2:1;
+  updateTurnUI(); resetTimer();
+  if(isCPU&&currentPlayer===2)scheduleCPU();
+}
+
+function checkWin(row,col){
+  const p=board[row][col];
+  for(const[dr,dc]of[[0,1],[1,0],[1,1],[1,-1]]){
+    const line=[[row,col]];
+    for(const s of[1,-1])
+      for(let i=1;i<4;i++){
+        const r=row+dr*i*s,c=col+dc*i*s;
+        if(r>=0&&r<ROWS&&c>=0&&c<COLS&&board[r][c]===p)line.push([r,c]);else break;
+      }
+    if(line.length>=4)return line;
+  }
+  return null;
+}
+
+function isDraw(){ return board[0].every(v=>v!==0); }
+
+function handleWin(cells,player){
+  gameOver=true; stopTimer();
+  boardOverlay.style.pointerEvents='none';
+  scores[player-1]++; updateScores();
+  cells.forEach(([r,c])=>{ const d=getCell(r,c)?.firstChild; if(d)d.classList.add('win'); });
+  winPlayerName.textContent=player===1?'Player 1':(isCPU?'CPU':'Player 2');
+  winTitle.textContent='Wins!';
+  turnBanner.style.display='none';
+  winBanner.classList.add('show');
+}
+function handleDraw(){
+  gameOver=true; stopTimer();
+  boardOverlay.style.pointerEvents='none';
+  winPlayerName.textContent='';
+  winTitle.textContent='Draw!';
+  turnBanner.style.display='none';
+  winBanner.classList.add('show');
+}
+
+// ─── TIMER ───────────────────────────────────────────────────────────────────
+function startTimer(){
+  timerVal=TIMER_MAX; turnTimer.textContent=timerVal+'s';
+  timerInterval=setInterval(()=>{
+    timerVal--; turnTimer.textContent=timerVal+'s';
+    if(timerVal<=0){
+      stopTimer();
+      const winner=currentPlayer===1?2:1;
+      scores[winner-1]++; updateScores();
+      winPlayerName.textContent=winner===1?'Player 1':(isCPU?'CPU':'Player 2');
+      winTitle.textContent='Wins!';
+      gameOver=true; boardOverlay.style.pointerEvents='none';
+      turnBanner.style.display='none'; winBanner.classList.add('show');
+    }
+  },1000);
+}
+function stopTimer(){ clearInterval(timerInterval); timerInterval=null; }
+function resetTimer(){ stopTimer(); startTimer(); }
+
+// ─── UI ──────────────────────────────────────────────────────────────────────
+function updateTurnUI(){
+  const isP1=currentPlayer===1;
+  turnLabel.textContent=(isP1?'Player 1':(isCPU?'CPU':'Player 2'))+"'s Turn";
+  turnBanner.className='turn-banner'+(isP1?'':' yellow');
+}
+function updateScores(){ scoreVal1.textContent=scores[0]; scoreVal2.textContent=scores[1]; }
+
+// ─── CPU AI ──────────────────────────────────────────────────────────────────
+// FIX: minimax now passes lastRow/lastCol and only checks win on the last move
+function scheduleCPU(){
+  if(gameOver)return;
+  cpuThinking=true; boardOverlay.style.pointerEvents='none';
+  setTimeout(()=>{
+    if(gameOver){cpuThinking=false;return;}
+    const col=bestMove();
+    cpuThinking=false; boardOverlay.style.pointerEvents='';
+    const row=lowestEmpty(col);
+    if(row!==-1)drop(row,col,2,true);
+  },400+Math.random()*350);
+}
+
+function bestMove(){
+  // 1. Win immediately
+  for(let c=0;c<COLS;c++){
+    const r=lowestEmpty(c); if(r===-1)continue;
+    board[r][c]=2; const w=checkWin(r,c); board[r][c]=0;
+    if(w)return c;
+  }
+  // 2. Block player win
+  for(let c=0;c<COLS;c++){
+    const r=lowestEmpty(c); if(r===-1)continue;
+    board[r][c]=1; const w=checkWin(r,c); board[r][c]=0;
+    if(w)return c;
+  }
+  // 3. Minimax — search order starts from center
+  let best=-Infinity, bestCol=3;
+  for(const c of[3,2,4,1,5,0,6]){
+    const r=lowestEmpty(c); if(r===-1)continue;
+    board[r][c]=2;
+    const s=minimax(5,false,-Infinity,Infinity,r,c);  // pass last move position
+    board[r][c]=0;
+    if(s>best){best=s;bestCol=c;}
+  }
+  return bestCol;
+}
+
+// KEY FIX: lastR/lastC track which position was just played, so terminal detection
+// only checks that cell instead of scanning the whole board (which caused all
+// moves to score identically, making the CPU always pick column 3).
+function minimax(depth,max,alpha,beta,lastR,lastC){
+  // Check if the last move ended the game
+  if(lastR!==undefined){
+    if(checkWin(lastR,lastC)){
+      // The player who just moved won; if max=false it was player 2's move (maximizer)
+      return max ? -1e5-depth : 1e5+depth;
+    }
+  }
+  if(!depth||isDraw())return heuristic();
+
+  if(max){
+    let v=-Infinity;
+    for(const c of[3,2,4,1,5,0,6]){
+      const r=lowestEmpty(c); if(r===-1)continue;
+      board[r][c]=2;
+      v=Math.max(v,minimax(depth-1,false,alpha,beta,r,c));
+      board[r][c]=0;
+      alpha=Math.max(alpha,v);
+      if(alpha>=beta)break;
+    }
+    return v;
+  }else{
+    let v=Infinity;
+    for(const c of[3,2,4,1,5,0,6]){
+      const r=lowestEmpty(c); if(r===-1)continue;
+      board[r][c]=1;
+      v=Math.min(v,minimax(depth-1,true,alpha,beta,r,c));
+      board[r][c]=0;
+      beta=Math.min(beta,v);
+      if(alpha>=beta)break;
+    }
+    return v;
+  }
+}
+
+function heuristic(){
+  let s=0;
+  // Center column preference
+  for(let r=0;r<ROWS;r++){
+    if(board[r][3]===2)s+=4; else if(board[r][3]===1)s-=4;
+    if(board[r][2]===2||board[r][4]===2)s+=2;
+    else if(board[r][2]===1||board[r][4]===1)s-=2;
+  }
+  const w4=arr=>{
+    const t=arr.filter(v=>v===2).length, o=arr.filter(v=>v===1).length, e=arr.filter(v=>!v).length;
+    if(t===4)return 100; if(t===3&&e===1)return 10; if(t===2&&e===2)return 2;
+    if(o===4)return-100; if(o===3&&e===1)return-10; if(o===2&&e===2)return-2;
+    return 0;
+  };
+  for(let r=0;r<ROWS;r++)   for(let c=0;c<COLS-3;c++) s+=w4([board[r][c],board[r][c+1],board[r][c+2],board[r][c+3]]);
+  for(let r=0;r<ROWS-3;r++) for(let c=0;c<COLS;c++)   s+=w4([board[r][c],board[r+1][c],board[r+2][c],board[r+3][c]]);
+  for(let r=0;r<ROWS-3;r++) for(let c=0;c<COLS-3;c++) s+=w4([board[r][c],board[r+1][c+1],board[r+2][c+2],board[r+3][c+3]]);
+  for(let r=3;r<ROWS;r++)   for(let c=0;c<COLS-3;c++) s+=w4([board[r][c],board[r-1][c+1],board[r-2][c+2],board[r-3][c+3]]);
+  return s;
+}
+</script>
+</body>
+</html>
